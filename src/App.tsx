@@ -265,10 +265,10 @@ function App() {
       <Container maxWidth="lg" sx={{ py: 2 }}>
         <Box sx={{ mb: 2, textAlign: 'center' }}>
           <Typography variant="h3" component="h1" gutterBottom>
-            🌐 世論トレンド分析システム
+            🔊 EchoScope
           </Typography>
           <Typography variant="subtitle1" color="text.secondary">
-            {mode === 'category' ? 'はてなブックマークから世論の傾向を分析' : 'SNS vs メディアの違いを可視化'}
+            {mode === 'category' ? '世論の響きを可視化するトレンド分析ツール' : 'SNS vs メディアの違いを可視化'}
           </Typography>
           {!apiAvailable && (
             <Alert severity="warning" sx={{ mt: 2 }}>
