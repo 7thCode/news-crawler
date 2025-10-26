@@ -1,0 +1,101 @@
+{
+  "name": "news-crawler",
+  "version": "1.0.0",
+  "description": "世論トレンド分析システム",
+  "main": "dist-electron/electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test-hatena.js",
+    "analyze": "node test-analyzer.js",
+    "sentiment": "node test-sentiment.js",
+    "integration": "node test-integration.js",
+    "compare": "node test-integration.js compare",
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
+    "build": "npm run build:vite && npm run build:electron-main && npm run copy:preload",
+    "build:vite": "vite build",
+    "build:electron-main": "tsc electron/main.ts --outDir dist-electron --module ESNext --target ES2020 --moduleResolution bundler --esModuleInterop --skipLibCheck",
+    "copy:preload": "cp electron/preload.js dist-electron/electron/preload.js",
+    "package": "npm run build && electron-builder",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:win": "npm run build && electron-builder --win",
+    "package:linux": "npm run build && electron-builder --linux",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "news",
+    "sentiment-analysis",
+    "rss",
+    "hatena-bookmark"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "build": {
+    "appId": "com.newscrawler.app",
+    "productName": "世論トレンド分析",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-react/**/*",
+      "dist-electron/**/*",
+      "node_modules/**/*",
+      "electron/preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/kuromoji/dict",
+        "to": "dict"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    }
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@fontsource/roboto": "^5.2.8",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/material": "^7.3.4",
+    "axios": "^1.12.2",
+    "kuromoji": "^0.1.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.0",
+    "concurrently": "^10.2.1",
+    "cross-env": "^7.0.3",
+    "electron": "^38.4.0",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12",
+    "wait-on": "^8.0.3"
+  }
+}
