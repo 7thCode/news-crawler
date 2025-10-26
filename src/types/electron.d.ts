@@ -51,6 +51,25 @@ export interface ElectronAPI {
     }
     error?: string
   }>
+  searchSubKeywords: (keyword: string, category: string, sourceType: 'sns' | 'media' | 'both') => Promise<{
+    success: boolean
+    data?: {
+      keywords: Array<{ word: string; count: number }>
+      sentiment: {
+        average: number
+        positive: number
+        negative: number
+        neutral: number
+      }
+      articles: Array<{
+        title: string
+        link: string
+        sentiment: string
+        score: number
+      }>
+    }
+    error?: string
+  }>
 }
 
 declare global {

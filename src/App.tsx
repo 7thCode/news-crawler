@@ -21,6 +21,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Divider,
+  CircularProgress,
 } from '@mui/material'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
@@ -96,6 +97,21 @@ function App() {
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [apiAvailable, setApiAvailable] = useState(false)
+  const [keywordDrillPath, setKeywordDrillPath] = useState<string[]>([])
+  const [originalKeywords, setOriginalKeywords] = useState<Array<{ word: string; count: number }>>([])
+  const [originalSentiment, setOriginalSentiment] = useState<{
+    average: number
+    positive: number
+    negative: number
+    neutral: number
+  } | null>(null)
+  const [originalArticles, setOriginalArticles] = useState<Array<{
+    title: string
+    link: string
+    sentiment: string
+    score: number
+  }>>([])
+  const [drillLoading, setDrillLoading] = useState(false)
 
   useEffect(() => {
     // 起動時にelectronAPIが利用可能かチェック
@@ -116,6 +132,10 @@ function App() {
     setError(null)
     setResult(null)
     setComparisonResult(null)
+    setKeywordDrillPath([])
+    setOriginalKeywords([])
+    setOriginalSentiment(null)
+    setOriginalArticles([])
 
     try {
       if (!window.electronAPI) {
@@ -126,6 +146,9 @@ function App() {
         const response = await window.electronAPI.analyzeTrends(category, 20)
         if (response.success && response.data) {
           setResult(response.data)
+          setOriginalKeywords(response.data.keywords)
+          setOriginalSentiment(response.data.sentiment)
+          setOriginalArticles(response.data.articles)
         } else {
           setError(response.error || '分析に失敗しました')
         }
@@ -144,6 +167,87 @@ function App() {
     }
   }
 
+  const handleKeywordClick = async (keyword: string) => {
+    setDrillLoading(true)
+    setError(null)
+
+    try {
+      if (!window.electronAPI) {
+        throw new Error('electronAPI is not available.')
+      }
+
+      const response = await window.electronAPI.searchSubKeywords(keyword, category, mode === 'compare' ? 'both' : 'sns')
+      if (response.success && response.data) {
+        // ドリルパスに追加
+        setKeywordDrillPath(prev => [...prev, keyword])
+
+        // メインのキーワード、感情分析、記事を置き換え
+        if (result) {
+          setResult({
+            ...result,
+            keywords: response.data.keywords,
+            sentiment: response.data.sentiment,
+            articles: response.data.articles
+          })
+        }
+      } else {
+        setError(response.error || 'サブキーワード検索に失敗しました')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'サブキーワード検索エラー')
+    } finally {
+      setDrillLoading(false)
+    }
+  }
+
+  const handleKeywordBack = () => {
+    if (keywordDrillPath.length === 0) {
+      return
+    }
+
+    const newPath = keywordDrillPath.slice(0, -1)
+    setKeywordDrillPath(newPath)
+
+    // 最上位に戻る場合は元のキーワード、感情分析、記事を復元
+    if (newPath.length === 0) {
+      if (result && originalSentiment) {
+        setResult({
+          ...result,
+          keywords: originalKeywords,
+          sentiment: originalSentiment,
+          articles: originalArticles
+        })
+      }
+    } else {
+      // それ以外の場合は、1つ前のキーワードで再検索
+      const previousKeyword = newPath[newPath.length - 1]
+      reDrillToKeyword(previousKeyword)
+    }
+  }
+
+  const reDrillToKeyword = async (keyword: string) => {
+    setDrillLoading(true)
+    try {
+      if (!window.electronAPI) {
+        throw new Error('electronAPI is not available.')
+      }
+
+      const response = await window.electronAPI.searchSubKeywords(keyword, category, mode === 'compare' ? 'both' : 'sns')
+      if (response.success && response.data && result) {
+        setResult({
+          ...result,
+          keywords: response.data.keywords,
+          sentiment: response.data.sentiment,
+          articles: response.data.articles
+        })
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'サブキーワード検索エラー')
+    } finally {
+      setDrillLoading(false)
+    }
+  }
+
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
       case 'positive':
@@ -158,8 +262,8 @@ function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ mb: 4, textAlign: 'center' }}>
+      <Container maxWidth="lg" sx={{ py: 2 }}>
+        <Box sx={{ mb: 2, textAlign: 'center' }}>
           <Typography variant="h3" component="h1" gutterBottom>
             🌐 世論トレンド分析システム
           </Typography>
@@ -173,7 +277,7 @@ function App() {
           )}
         </Box>
 
-        <Paper sx={{ p: 3, mb: 4 }}>
+        <Paper sx={{ p: 2, mb: 2 }}>
           <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
             <ToggleButtonGroup
               value={mode}
@@ -229,16 +333,16 @@ function App() {
           </Grid>
         </Paper>
 
-        {loading && <LinearProgress sx={{ mb: 4 }} />}
+        {loading && <LinearProgress sx={{ mb: 2 }} />}
 
         {error && (
-          <Alert severity="error" sx={{ mb: 4 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
 
         {comparisonResult && (
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             {/* SNS vs メディア感情トレンド比較 */}
             <Grid item xs={12}>
               <Card>
@@ -247,7 +351,7 @@ function App() {
                     📊 SNS vs メディア 比較分析
                   </Typography>
 
-                  <Grid container spacing={3}>
+                  <Grid container spacing={2}>
                     {/* SNS感情分析 */}
                     <Grid item xs={12} md={6}>
                       <Typography variant="h6" gutterBottom color="primary">
@@ -331,21 +435,19 @@ function App() {
                   <Typography variant="h6" gutterBottom color="primary">
                     📱 SNSで特に注目されているキーワード
                   </Typography>
-                  <List dense>
+                  <Grid container spacing={1}>
                     {comparisonResult.sns.uniqueKeywords.map((kw, index) => (
-                      <ListItem key={index}>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Chip label={`${index + 1}`} size="small" color="primary" />
-                              <Typography variant="body1">{kw.word}</Typography>
-                            </Box>
-                          }
-                          secondary={`${kw.count}回出現`}
+                      <Grid item xs={6} key={index}>
+                        <Chip
+                          label={`${index + 1}. ${kw.word} (${kw.count}回)`}
+                          onClick={() => handleKeywordClick(kw.word)}
+                          sx={{ width: '100%', cursor: 'pointer', justifyContent: 'flex-start' }}
+                          color="primary"
+                          variant="outlined"
                         />
-                      </ListItem>
+                      </Grid>
                     ))}
-                  </List>
+                  </Grid>
                 </CardContent>
               </Card>
             </Grid>
@@ -357,21 +459,19 @@ function App() {
                   <Typography variant="h6" gutterBottom color="secondary">
                     📰 メディアで特に報道されているキーワード
                   </Typography>
-                  <List dense>
+                  <Grid container spacing={1}>
                     {comparisonResult.media.uniqueKeywords.map((kw, index) => (
-                      <ListItem key={index}>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Chip label={`${index + 1}`} size="small" color="secondary" />
-                              <Typography variant="body1">{kw.word}</Typography>
-                            </Box>
-                          }
-                          secondary={`${kw.count}回出現`}
+                      <Grid item xs={6} key={index}>
+                        <Chip
+                          label={`${index + 1}. ${kw.word} (${kw.count}回)`}
+                          onClick={() => handleKeywordClick(kw.word)}
+                          sx={{ width: '100%', cursor: 'pointer', justifyContent: 'flex-start' }}
+                          color="secondary"
+                          variant="outlined"
                         />
-                      </ListItem>
+                      </Grid>
                     ))}
-                  </List>
+                  </Grid>
                 </CardContent>
               </Card>
             </Grid>
@@ -379,29 +479,51 @@ function App() {
         )}
 
         {result && (
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             {/* キーワード */}
             <Grid item xs={12} md={6}>
               <Card>
                 <CardContent>
+                  {/* パンくずリストと戻るボタン */}
+                  {keywordDrillPath.length > 0 && (
+                    <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <Button size="small" onClick={handleKeywordBack} variant="outlined">
+                        ← 戻る
+                      </Button>
+                      <Typography variant="caption" color="text.secondary">
+                        トップ
+                      </Typography>
+                      {keywordDrillPath.map((kw, idx) => (
+                        <Typography key={idx} variant="caption" color="text.secondary">
+                          → {kw}
+                        </Typography>
+                      ))}
+                    </Box>
+                  )}
+
                   <Typography variant="h6" gutterBottom>
-                    🔑 頻出キーワード TOP 10
+                    🔑 {keywordDrillPath.length > 0 ? `「${keywordDrillPath[keywordDrillPath.length - 1]}」関連キーワード` : '頻出キーワード TOP 10'}
                   </Typography>
-                  <List dense>
-                    {result.keywords.slice(0, 10).map((kw, index) => (
-                      <ListItem key={index}>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Chip label={`${index + 1}`} size="small" />
-                              <Typography variant="body1">{kw.word}</Typography>
-                            </Box>
-                          }
-                          secondary={`${kw.count}回出現`}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
+
+                  {drillLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : (
+                    <Grid container spacing={1}>
+                      {result.keywords.slice(0, 10).map((kw, index) => (
+                        <Grid item xs={6} key={index}>
+                          <Chip
+                            label={`${index + 1}. ${kw.word} (${kw.count}回)`}
+                            onClick={() => handleKeywordClick(kw.word)}
+                            sx={{ width: '100%', cursor: 'pointer', justifyContent: 'flex-start' }}
+                            color={index < 3 ? 'primary' : 'default'}
+                            variant={index < 3 ? 'filled' : 'outlined'}
+                          />
+                        </Grid>
+                      ))}
+                    </Grid>
+                  )}
                 </CardContent>
               </Card>
             </Grid>
@@ -415,38 +537,47 @@ function App() {
                   </Typography>
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="body2" color="text.secondary">
-                      平均スコア: {result.sentiment.average.toFixed(2)}
+                      平均スコア: {result.sentiment.average.toFixed(2)} ({result.articles.length}件の記事)
                     </Typography>
                     <Box sx={{ mt: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <SentimentSatisfiedAltIcon color="success" sx={{ mr: 1 }} />
-                        <Typography variant="body2">ポジティブ: {result.sentiment.positive}件</Typography>
+                        <Typography variant="body2">
+                          ポジティブ: {result.sentiment.positive}件
+                          ({result.articles.length > 0 ? ((result.sentiment.positive / result.articles.length) * 100).toFixed(0) : 0}%)
+                        </Typography>
                       </Box>
                       <LinearProgress
                         variant="determinate"
-                        value={(result.sentiment.positive / 20) * 100}
+                        value={result.articles.length > 0 ? (result.sentiment.positive / result.articles.length) * 100 : 0}
                         color="success"
                         sx={{ mb: 2 }}
                       />
 
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <SentimentDissatisfiedIcon color="error" sx={{ mr: 1 }} />
-                        <Typography variant="body2">ネガティブ: {result.sentiment.negative}件</Typography>
+                        <Typography variant="body2">
+                          ネガティブ: {result.sentiment.negative}件
+                          ({result.articles.length > 0 ? ((result.sentiment.negative / result.articles.length) * 100).toFixed(0) : 0}%)
+                        </Typography>
                       </Box>
                       <LinearProgress
                         variant="determinate"
-                        value={(result.sentiment.negative / 20) * 100}
+                        value={result.articles.length > 0 ? (result.sentiment.negative / result.articles.length) * 100 : 0}
                         color="error"
                         sx={{ mb: 2 }}
                       />
 
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <SentimentNeutralIcon color="disabled" sx={{ mr: 1 }} />
-                        <Typography variant="body2">中立: {result.sentiment.neutral}件</Typography>
+                        <Typography variant="body2">
+                          中立: {result.sentiment.neutral}件
+                          ({result.articles.length > 0 ? ((result.sentiment.neutral / result.articles.length) * 100).toFixed(0) : 0}%)
+                        </Typography>
                       </Box>
                       <LinearProgress
                         variant="determinate"
-                        value={(result.sentiment.neutral / 20) * 100}
+                        value={result.articles.length > 0 ? (result.sentiment.neutral / result.articles.length) * 100 : 0}
                         sx={{ mb: 2 }}
                       />
                     </Box>
@@ -460,7 +591,7 @@ function App() {
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    📰 記事一覧
+                    📰 {keywordDrillPath.length > 0 ? `「${keywordDrillPath[keywordDrillPath.length - 1]}」関連記事` : '記事一覧'}
                   </Typography>
                   <List>
                     {result.articles.map((article, index) => (
@@ -491,6 +622,7 @@ function App() {
             </Grid>
           </Grid>
         )}
+
       </Container>
     </ThemeProvider>
   )

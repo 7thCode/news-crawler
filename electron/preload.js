@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('analyze-trends', category, limit),
   compareSnsMedia: (limit) =>
     ipcRenderer.invoke('compare-sns-media', limit),
+  searchSubKeywords: (keyword, category, sourceType) =>
+    ipcRenderer.invoke('search-sub-keywords', keyword, category, sourceType),
 })
 
 console.log('electronAPI exposed to window')

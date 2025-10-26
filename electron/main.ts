@@ -236,3 +236,93 @@ ipcMain.handle('compare-sns-media', async (event, limit: number = 20) => {
     }
   }
 })
+
+// IPC handlers - サブキーワード検索
+ipcMain.handle('search-sub-keywords', async (event, keyword: string, category: string, sourceType: 'sns' | 'media' | 'both') => {
+  try {
+    console.log(`サブキーワード検索開始: キーワード=${keyword}, カテゴリ=${category}, ソース=${sourceType}`)
+
+    // 1. tokenizerを初期化
+    const tokenizer = await initTokenizer()
+
+    // 2. データ取得
+    let allData: any[] = []
+
+    if (sourceType === 'sns' || sourceType === 'both') {
+      const snsData = await fetchHatenaBookmarks(category, 20)
+      allData = [...allData, ...snsData]
+    }
+
+    if (sourceType === 'media' || sourceType === 'both') {
+      const nhkData = await fetchNewsRSS('nhk', 10)
+      const yahooData = await fetchNewsRSS('yahoo_topics', 10)
+      allData = [...allData, ...nhkData, ...yahooData]
+    }
+
+    // 3. 指定キーワードを含む記事だけフィルタ
+    const filteredData = allData.filter(item => {
+      const text = `${item.title} ${item.content || item.contentSnippet || ''}`
+      return text.includes(keyword)
+    })
+
+    console.log(`${keyword}を含む記事: ${filteredData.length}件`)
+
+    if (filteredData.length === 0) {
+      return {
+        success: true,
+        data: { keywords: [] }
+      }
+    }
+
+    // 4. フィルタした記事からキーワード抽出
+    const filteredText = filteredData.map(item => `${item.title} ${item.content || item.contentSnippet || ''}`).join(' ')
+    const nouns = extractNouns(tokenizer, filteredText)
+    const wordCounts = countWords(nouns)
+
+    // 5. 元のキーワード自体を除外してTOP 10取得
+    const keywords = getTopKeywords(wordCounts, 15).filter(kw => kw.word !== keyword).slice(0, 10)
+
+    // 6. フィルタした記事ごとの感情分析
+    const articlesWithSentiment = filteredData.map((item) => {
+      const text = `${item.title || ''} ${item.content || item.contentSnippet || ''}`
+      const sentiment = analyzeSentiment(tokenizer, text)
+
+      return {
+        title: item.title || '',
+        link: item.link || '',
+        sentiment: sentiment.sentiment,
+        score: sentiment.score,
+      }
+    })
+
+    // 7. 感情トレンド集計
+    const positiveCount = articlesWithSentiment.filter((a) => a.sentiment === 'positive').length
+    const negativeCount = articlesWithSentiment.filter((a) => a.sentiment === 'negative').length
+    const neutralCount = articlesWithSentiment.filter((a) => a.sentiment === 'neutral').length
+    const averageScore = articlesWithSentiment.length > 0
+      ? articlesWithSentiment.reduce((sum, a) => sum + a.score, 0) / articlesWithSentiment.length
+      : 0
+
+    console.log(`サブキーワード抽出完了: ${keywords.length}件、記事: ${articlesWithSentiment.length}件`)
+
+    return {
+      success: true,
+      data: {
+        keywords,
+        sentiment: {
+          average: averageScore,
+          positive: positiveCount,
+          negative: negativeCount,
+          neutral: neutralCount,
+        },
+        articles: articlesWithSentiment,
+      }
+    }
+  } catch (error) {
+    console.error('サブキーワード検索エラー:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+})
