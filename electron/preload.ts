@@ -7,6 +7,8 @@ console.log('Preload script is running!')
 contextBridge.exposeInMainWorld('electronAPI', {
   analyzeTrends: (category: string, limit: number) =>
     ipcRenderer.invoke('analyze-trends', category, limit),
+  compareSnsMedia: (limit: number) =>
+    ipcRenderer.invoke('compare-sns-media', limit),
 })
 
 console.log('electronAPI exposed to window')

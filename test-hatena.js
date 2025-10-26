@@ -13,7 +13,7 @@ const HATENA_FEEDS = {
   tech: 'https://b.hatena.ne.jp/hotentry/it.rss',
   entertainment: 'https://b.hatena.ne.jp/hotentry/fun.rss',
   social: 'https://b.hatena.ne.jp/hotentry/social.rss',
-  knowledge: 'https://b.hatena.ne.jp/hotentry/knowledge.rss',
+  economics: 'https://b.hatena.ne.jp/hotentry/economics.rss',
 };
 
 /**
@@ -37,7 +37,7 @@ async function fetchHatenaBookmarks(category = 'general', limit = 10) {
     console.log(`取得件数: ${Math.min(feed.items.length, limit)}\n`);
     console.log('─'.repeat(80));
 
-    feed.items.slice(0, limit).forEach((item, index) => {
+    const items = feed.items.slice(0, limit).map((item, index) => {
       console.log(`\n${index + 1}. ${item.title}`);
       console.log(`   URL: ${item.link}`);
       console.log(`   公開日: ${item.pubDate}`);
@@ -47,12 +47,23 @@ async function fetchHatenaBookmarks(category = 'general', limit = 10) {
         const snippet = item.contentSnippet.substring(0, 100);
         console.log(`   概要: ${snippet}...`);
       }
+
+      // データ構造にsourceType属性を追加
+      return {
+        title: item.title,
+        link: item.link,
+        pubDate: item.pubDate,
+        content: item.contentSnippet || item.content || '',
+        source: 'はてなブックマーク',
+        sourceType: 'sns',  // SNS系（ユーザーの意見）
+        category: category
+      };
     });
 
     console.log('\n' + '─'.repeat(80));
     console.log('✅ RSS取得成功\n');
 
-    return feed.items.slice(0, limit);
+    return items;
   } catch (error) {
     console.error('❌ RSS取得エラー:', error.message);
     throw error;

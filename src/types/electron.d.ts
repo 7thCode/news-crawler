@@ -18,6 +18,39 @@ export interface ElectronAPI {
     }
     error?: string
   }>
+  compareSnsMedia: (limit: number) => Promise<{
+    success: boolean
+    data?: {
+      sns: {
+        keywords: Array<{ word: string; count: number }>
+        sentiment: {
+          average: number
+          positive: number
+          negative: number
+          neutral: number
+          positiveRate: number
+          negativeRate: number
+          neutralRate: number
+        }
+        uniqueKeywords: Array<{ word: string; count: number }>
+      }
+      media: {
+        keywords: Array<{ word: string; count: number }>
+        sentiment: {
+          average: number
+          positive: number
+          negative: number
+          neutral: number
+          positiveRate: number
+          negativeRate: number
+          neutralRate: number
+        }
+        uniqueKeywords: Array<{ word: string; count: number }>
+      }
+      sentimentDiff: number
+    }
+    error?: string
+  }>
 }
 
 declare global {

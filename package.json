@@ -6,6 +6,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node test-hatena.js",
+    "test:news": "node test-news-rss.js",
+    "test:comparison": "node test-comparison.js",
     "analyze": "node test-analyzer.js",
     "sentiment": "node test-sentiment.js",
     "integration": "node test-integration.js",

@@ -14,7 +14,11 @@
       "Bash(npm run package:*)",
       "Bash(npm start)",
       "Bash(npm run build:electron-main:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebSearch",
+      "Bash(node test-news-rss.js:*)",
+      "Bash(node:*)",
+      "Bash(npm run test:news:*)"
     ],
     "deny": [],
     "ask": []
