@@ -1,9 +1,21 @@
 import kuromoji from 'kuromoji'
 import { join } from 'path'
+import { app } from 'electron'
 
-// kuromoji辞書のパス - プロジェクトルートから解決
-// process.cwd()はElectronアプリのルートディレクトリを返す
-const DICT_PATH = join(process.cwd(), 'node_modules/kuromoji/dict')
+// kuromoji辞書のパス - パッケージ化対応
+// 開発環境: node_modules/kuromoji/dict
+// パッケージ化環境: resources/dict
+function getDictPath(): string {
+  if (app.isPackaged) {
+    // パッケージ化された環境: resourcesディレクトリから取得
+    return join(process.resourcesPath, 'dict')
+  } else {
+    // 開発環境: node_modulesから取得
+    return join(process.cwd(), 'node_modules/kuromoji/dict')
+  }
+}
+
+const DICT_PATH = getDictPath()
 
 export interface Keyword {
   word: string

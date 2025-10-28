@@ -48,8 +48,14 @@
     "extraResources": [
       {
         "from": "node_modules/kuromoji/dict",
-        "to": "dict"
+        "to": "dict",
+        "filter": [
+          "**/*"
+        ]
       }
+    ],
+    "asarUnpack": [
+      "node_modules/kuromoji/dict/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
